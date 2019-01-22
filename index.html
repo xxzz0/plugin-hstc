@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=2.0, user-scalable=yes" />
+	<title>洪水填充</title>
+	<style>
+		*{margin:0;padding:0;}
+		canvas{display:block;}
+		.fill{margin:50px auto 0;position: relative;height:400px;-webkit-user-select: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);}
+		.fill canvas{position: absolute;left:0;top:0;height:100%;}
+		.fill div{position: absolute;width:100%;height:100%;left:0;top:0;background-repeat: no-repeat;background-position: center center;background-size: auto 100%;}
+		.fill img{position: absolute;left:0;top:0;height:100%;display: none;}
+		#btn{position: absolute;width:100px;height:40px;right:50px;bottom:50px;}
+	</style>
+</head>
+<body>
+	<div id="js_fill" class="fill">
+		<canvas width="649px" height="648px"></canvas>
+		<div id="f_fm"></div>
+		<!-- f="a" f:要填充的线稿 a:封面图片 -->
+		<img f="a" src="balloon_plane.png"/>
+		<img a="true" src="balloon_plane_wire.png"/>
+		
+	</div>
+	<input id="btn" type="button" value="生成图片"/>
+	<script src="jquery.min.js"></script>
+	<script src="floodFill.js"></script>
+	<script>
+	var xxEvents=('ontouchstart' in window)?{start: 'touchstart', move: 'touchmove', end: 'touchend'} : {start: 'click', move: 'mousemove', end: 'mouseup'};
+	function canvasFill(){
+		var _this=this;
+		var $wrap=$('#js_fill');
+		var canvas=$('canvas',$wrap)[0];
+		var lineImgG=$('img[f]',$wrap),//需要绘制的线稿图片集合
+			fmBox=$('#f_fm');//封面容器
+
+		var cxt=canvas.getContext('2d');
+		var w,h,scale,fImg;
+		_this.Index=0;//当前绘制的图片
+
+		_this.init=function(n){
+			//绘图初始化
+			_this.Index=n||_this.Index;
+			$('img',$wrap).hide();
+			var lImg=lineImgG[_this.Index];//当前需要绘制的线稿
+			fImg=$('img['+$(lImg).attr('f')+']',$wrap)[0];//封面图片(用于合成图片)
+			if(fImg){
+				fmBox.css('backgroundImage','url('+fImg.src+')');
+			}else{
+				fmBox.css('backgroundImage','none');
+			};
+			w=lImg.width;
+			h=lImg.height;
+			canvas.width=w;
+			canvas.height=h;
+			scale=$wrap.height()/h;
+			$wrap.width(Math.round(w*scale));
+
+			cxt.clearRect(0,0,w,h);//清空画布
+
+			//绘制背景
+			cxt.fillStyle='#fff';//可以去掉
+
+			cxt.fillRect(0,0,w,h);
+			cxt.drawImage(lImg,0,0);
+
+			//添加事件
+			$wrap.off('click'); //用点击事件能够 节流（提高性能）
+			$wrap.on('click',function(e){
+				Draw(e);
+			});
+		}
+		function Draw(e){
+			var x=Math.floor(((e.pageX||e.originalEvent.changedTouches[0].pageX)-$(canvas).offset().left)/scale),
+				y=Math.floor(((e.pageY||e.originalEvent.changedTouches[0].pageY)-$(canvas).offset().top)/scale); //一定要取整 像素不能为半个
+			
+			// var p = cxt.getImageData(x, y, 1, 1);
+			// var q = p.data;
+			// if (q[0] === 0 && q[1] === 0 && q[2] === 0 && q[3] === 0) {
+			// 	alert("此处不能上色哦~");
+			// 	return false
+			// }
+
+			var rgba=[Math.ceil(Math.random()*255),Math.ceil(Math.random()*255),Math.ceil(Math.random()*255),255];
+			floodFillLinear(canvas, x, y, rgba, 80);//洪水填充
+		}
+		_this.createImg=function(){
+			$wrap.off('click');//取消事件
+			//生成图片
+			if(fImg){
+				cxt.drawImage(fImg,0,0);
+			}			
+			var base64 = canvas.toDataURL('image/jpeg', 1);
+			var img=new Image();
+			img.src=base64;
+			$('body').append(img);
+		}
+		$('#btn').on('click',function(){
+			_this.createImg();
+		});
+		
+	}
+	window.onload=function(){
+		var cf=new canvasFill();
+		cf.init();
+	}
+	</script>
+</body>
+</html>
